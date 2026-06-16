@@ -1,12 +1,17 @@
 import java.io.*;
 import java.net.*;
 
-public class Client {
+public class client {
     public static void main(String[] args) {
-        String host = "localhost"; // change to server IP if needed
-        int port = 1234;
 
         try {
+            BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
+
+            System.out.print("Enter server IP: ");
+            String host = input.readLine();
+
+            int port = 1234;
+
             Socket socket = new Socket(host, port);
 
             BufferedReader serverIn = new BufferedReader(
@@ -14,8 +19,12 @@ public class Client {
             PrintWriter out = new PrintWriter(
                     socket.getOutputStream(), true);
 
-            BufferedReader userInput = new BufferedReader(
-                    new InputStreamReader(System.in));
+            System.out.println("Connected to server");
+
+            // Show commands
+            System.out.println("\nAvailable Commands:");
+            System.out.println("ADD a b | SUB a b | MUL a b | DIV a b");
+            System.out.println("REVERSE text | UPPER text | WORDCOUNT text\n");
 
             // Thread to receive messages
             new Thread(() -> {
@@ -25,18 +34,18 @@ public class Client {
                         System.out.println("Server: " + msg);
                     }
                 } catch (IOException e) {
-                    System.out.println("Disconnected from server");
+                    System.out.println("Server timeout or disconnected");
                 }
             }).start();
 
             // Send messages
-            String input;
-            while ((input = userInput.readLine()) != null) {
-                out.println(input);
+            String userInput;
+            while ((userInput = input.readLine()) != null) {
+                out.println(userInput);
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Could not connect to server");
         }
     }
 }
