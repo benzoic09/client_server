@@ -1,3 +1,5 @@
+import java.util.Scanner;
+
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
@@ -9,59 +11,133 @@ import task.TaskServiceGrpc;
 
 public class TaskClient {
 
-    // ── Requirement 11: host and port from args, not hardcoded ───────────────
-    // Usage: java TaskClient [host] [port]   (defaults to localhost:50051)
     public static void main(String[] args) {
 
         String host = (args.length > 0) ? args[0] : "localhost";
-        int    port = (args.length > 1) ? Integer.parseInt(args[1]) : 50051;
+        int port = (args.length > 1) ? Integer.parseInt(args[1]) : 50051;
 
         ManagedChannel channel = ManagedChannelBuilder
                 .forAddress(host, port)
                 .usePlaintext()
                 .build();
 
-        // ── Requirement 9: invoke via generated stub — no manual socket code ─
         TaskServiceGrpc.TaskServiceBlockingStub stub =
                 TaskServiceGrpc.newBlockingStub(channel);
 
-        try {
-            // Arithmetic
-            call("ADD 10+4",   () -> stub.add(TwoNumbers.newBuilder().setA(10).setB(4).build()));
-            call("SUB 10-4",   () -> stub.subtract(TwoNumbers.newBuilder().setA(10).setB(4).build()));
-            call("MUL 6×7",    () -> stub.multiply(TwoNumbers.newBuilder().setA(6).setB(7).build()));
-            call("DIV 20÷4",   () -> stub.divide(TwoNumbers.newBuilder().setA(20).setB(4).build()));
+        Scanner scanner = new Scanner(System.in);
 
-            // ── Requirement 10: client catches StatusRuntimeException ─────────
-            System.out.println("\n-- Testing RPC error propagation --");
-            call("DIV 5÷0",    () -> stub.divide(TwoNumbers.newBuilder().setA(5).setB(0).build()));
+        System.out.println("gRPC Client Started");
+        System.out.println("Commands:");
+        System.out.println(" add a b");
+        System.out.println(" sub a b");
+        System.out.println(" mul a b");
+        System.out.println(" div a b");
+        System.out.println(" reverse text");
+        System.out.println(" upper text");
+        System.out.println(" wordcount text");
+        System.out.println(" history");
+        System.out.println(" exit");
 
-            // String operations
-            call("REVERSE",    () -> stub.reverse(OneString.newBuilder().setText("hello").build()));
-            call("UPPER",      () -> stub.toUppercase(OneString.newBuilder().setText("world").build()));
-            call("WORDCOUNT",  () -> stub.wordCount(OneString.newBuilder().setText("the quick brown fox").build()));
+        while (true) {
 
-            // History
-            call("HISTORY",    () -> stub.getHistory(Empty.newBuilder().build()));
+            System.out.print("\n> ");
+            String input = scanner.nextLine().trim();
 
-        } finally {
-            channel.shutdown();
+            if (input.equalsIgnoreCase("exit")) {
+                break;
+            }
+
+            String[] parts = input.split(" ", 2);
+            String cmd = parts[0].toLowerCase();
+
+            try {
+                switch (cmd) {
+
+                    case "add": {
+                        String[] nums = parts[1].split(" ");
+                        call("ADD", stub.add(
+                                TwoNumbers.newBuilder()
+                                        .setA(Integer.parseInt(nums[0]))
+                                        .setB(Integer.parseInt(nums[1]))
+                                        .build()
+                        ));
+                        break;
+                    }
+
+                    case "sub": {
+                        String[] nums = parts[1].split(" ");
+                        call("SUB", stub.subtract(
+                                TwoNumbers.newBuilder()
+                                        .setA(Integer.parseInt(nums[0]))
+                                        .setB(Integer.parseInt(nums[1]))
+                                        .build()
+                        ));
+                        break;
+                    }
+
+                    case "mul": {
+                        String[] nums = parts[1].split(" ");
+                        call("MUL", stub.multiply(
+                                TwoNumbers.newBuilder()
+                                        .setA(Integer.parseInt(nums[0]))
+                                        .setB(Integer.parseInt(nums[1]))
+                                        .build()
+                        ));
+                        break;
+                    }
+
+                    case "div": {
+                        String[] nums = parts[1].split(" ");
+                        call("DIV", stub.divide(
+                                TwoNumbers.newBuilder()
+                                        .setA(Integer.parseInt(nums[0]))
+                                        .setB(Integer.parseInt(nums[1]))
+                                        .build()
+                        ));
+                        break;
+                    }
+
+                    case "reverse":
+                        call("REVERSE", stub.reverse(
+                                OneString.newBuilder().setText(parts[1]).build()
+                        ));
+                        break;
+
+                    case "upper":
+                        call("UPPER", stub.toUppercase(
+                                OneString.newBuilder().setText(parts[1]).build()
+                        ));
+                        break;
+
+                    case "wordcount":
+                        call("WORDCOUNT", stub.wordCount(
+                                OneString.newBuilder().setText(parts[1]).build()
+                        ));
+                        break;
+
+                    case "history":
+                        call("HISTORY", stub.getHistory(Empty.newBuilder().build()));
+                        break;
+
+                    default:
+                        System.out.println("Unknown command");
+                }
+
+            } catch (StatusRuntimeException e) {
+                System.out.printf("✗ [%s] %s%n",
+                        e.getStatus().getCode(),
+                        e.getStatus().getDescription());
+            } catch (Exception e) {
+                System.out.println("Invalid input format");
+            }
         }
+
+        channel.shutdown();
+        scanner.close();
+        System.out.println("Client closed");
     }
 
-    // Wrapper: catches StatusRuntimeException from the framework (Requirement 10)
-    interface RpcCall { Result execute(); }
-
-    private static void call(String label, RpcCall rpc) {
-        try {
-            Result r = rpc.execute();
-            System.out.printf("%-12s → %s%n", label, r.getResult());
-        } catch (StatusRuntimeException e) {
-            // The gRPC framework deserialises the server's Status and throws here
-            System.out.printf("%-12s ✗ [%s] %s%n",
-                label,
-                e.getStatus().getCode(),        // e.g. INVALID_ARGUMENT
-                e.getStatus().getDescription()); // e.g. "Division by zero"
-        }
+    private static void call(String label, Result r) {
+        System.out.printf("%s = %s%n", label, r.getResult());
     }
 }
