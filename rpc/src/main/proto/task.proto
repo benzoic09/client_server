@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package task;
+
+option java_outer_classname = "TaskProto";
+
+service TaskService {
+  rpc Add        (TwoNumbers) returns (Result);
+  rpc Subtract   (TwoNumbers) returns (Result);
+  rpc Multiply   (TwoNumbers) returns (Result);
+  rpc Divide     (TwoNumbers) returns (Result);
+  rpc Reverse    (OneString)  returns (Result);
+  rpc ToUppercase(OneString)  returns (Result);
+  rpc WordCount  (OneString)  returns (Result);
+  rpc GetHistory (Empty)      returns (Result);
+}
+
+message TwoNumbers {
+  int32 a = 1;
+  int32 b = 2;
+}
+
+message OneString {
+  string text = 1;
+}
+
+message Result {
+  string result = 1;
+}
+
+message Empty {}
